@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible</title>
+    <script src="https://unpkg.com/lunr/lunr.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 95vw;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(255,255,255,0.95);
+            min-height: 100vh;
+            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+        }
+        @media (min-width: 768px) {
+            .container {
+                max-width: 90vw;
+                padding: 40px;
+            }
+        }
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        select {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        select:hover { border-color: #667eea; }
+        .search-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: center;
+            position: relative;
+        }
+        .search-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .search-input {
+            padding: 10px 35px 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            min-width: 400px;
+            transition: all 0.3s ease;
+        }
+        .search-input:focus { border-color: #667eea; outline: none; }
+        .search-clear {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #dc3545;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            color: white;
+            display: none;
+        }
+        .search-clear:hover { background: #c82333; }
+        .search-checkbox { margin-left: 10px; }
+        .search-results {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .result-verse {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 3px solid #667eea;
+            background: #f7fafc;
+        }
+        .result-ref {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .book-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .book-title {
+            font-size: 1.8em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .verse {
+            margin-bottom: 15px;
+            line-height: 1.8;
+            font-size: 18px;
+        }
+        .verse-number {
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 8px;
+            font-size: 14px;
+            vertical-align: super;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.2em;
+            color: #666;
+            padding: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="pageTitle">Bible</h1>
+        
+        <div class="controls">
+            <select id="languageSelect">
+                <option value="english">English</option>
+                <option value="chinese">中文</option>
+            </select>
+            <select id="bookSelect">
+                <option value="">Select Book</option>
+            </select>
+        </div>
+        
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search text or reference (e.g., Romans 8:1-5)">
+                <button id="searchClear" class="search-clear">×</button>
+            </div>
+            <label class="search-checkbox">
+                <input type="checkbox" id="searchEntireBible"> Search entire Bible
+            </label>
+        </div>
+        
+        <div id="content">
+            <div class="loading">Loading Bible...</div>
+        </div>
+    </div>
+
+    <script>
+        let bibleData = [];
+        let currentLanguage = 'english';
+        let searchIndex = null;
+        let isShowingResults = false;
+        let bookList = [
+            {"book": "創世記", "english": "Genesis"},
+            {"book": "出埃及記", "english": "Exodus"},
+            {"book": "利未記", "english": "Leviticus"},
+            {"book": "民數記", "english": "Numbers"},
+            {"book": "申命記", "english": "Deuteronomy"},
+            {"book": "約書亞記", "english": "Joshua"},
+            {"book": "士師記", "english": "Judges"},
+            {"book": "路得記", "english": "Ruth"},
+            {"book": "撒母耳記上", "english": "1 Samuel"},
+            {"book": "撒母耳記下", "english": "2 Samuel"},
+            {"book": "列王紀上", "english": "1 Kings"},
+            {"book": "列王紀下", "english": "2 Kings"},
+            {"book": "歷代志上", "english": "1 Chronicles"},
+            {"book": "歷代志下", "english": "2 Chronicles"},
+            {"book": "以斯拉記", "english": "Ezra"},
+            {"book": "尼希米記", "english": "Nehemiah"},
+            {"book": "以斯帖記", "english": "Esther"},
+            {"book": "約伯記", "english": "Job"},
+            {"book": "詩篇", "english": "Psalms"},
+            {"book": "箴言", "english": "Proverbs"},
+            {"book": "傳道書", "english": "Ecclesiastes"},
+            {"book": "雅歌", "english": "Song of Songs"},
+            {"book": "以賽亞書", "english": "Isaiah"},
+            {"book": "耶利米書", "english": "Jeremiah"},
+            {"book": "耶利米哀歌", "english": "Lamentations"},
+            {"book": "以西結書", "english": "Ezekiel"},
+            {"book": "但以理書", "english": "Daniel"},
+            {"book": "何西阿書", "english": "Hosea"},
+            {"book": "約珥書", "english": "Joel"},
+            {"book": "阿摩司書", "english": "Amos"},
+            {"book": "俄巴底亞書", "english": "Obadiah"},
+            {"book": "約拿書", "english": "Jonah"},
+            {"book": "彌迦書", "english": "Micah"},
+            {"book": "那鴻書", "english": "Nahum"},
+            {"book": "哈巴谷書", "english": "Habakkuk"},
+            {"book": "西番雅書", "english": "Zephaniah"},
+            {"book": "哈該書", "english": "Haggai"},
+            {"book": "撒迦利亞書", "english": "Zechariah"},
+            {"book": "瑪拉基書", "english": "Malachi"},
+            {"book": "馬太福音", "english": "Matthew"},
+            {"book": "馬可福音", "english": "Mark"},
+            {"book": "路加福音", "english": "Luke"},
+            {"book": "約翰福音", "english": "John"},
+            {"book": "使徒行傳", "english": "Acts"},
+            {"book": "羅馬書", "english": "Romans"},
+            {"book": "哥林多前書", "english": "1 Corinthians"},
+            {"book": "哥林多後書", "english": "2 Corinthians"},
+            {"book": "加拉太書", "english": "Galatians"},
+            {"book": "以弗所書", "english": "Ephesians"},
+            {"book": "腓立比書", "english": "Philippians"},
+            {"book": "歌羅西書", "english": "Colossians"},
+            {"book": "帖撒羅尼迦前書", "english": "1 Thessalonians"},
+            {"book": "帖撒羅尼迦後書", "english": "2 Thessalonians"},
+            {"book": "提摩太前書", "english": "1 Timothy"},
+            {"book": "提摩太後書", "english": "2 Timothy"},
+            {"book": "提多書", "english": "Titus"},
+            {"book": "腓利門書", "english": "Philemon"},
+            {"book": "希伯來書", "english": "Hebrews"},
+            {"book": "雅各書", "english": "James"},
+            {"book": "彼得前書", "english": "1 Peter"},
+            {"book": "彼得後書", "english": "2 Peter"},
+            {"book": "約翰一書", "english": "1 John"},
+            {"book": "約翰二書", "english": "2 John"},
+            {"book": "約翰三書", "english": "3 John"},
+            {"book": "猶大書", "english": "Jude"},
+            {"book": "啟示錄", "english": "Revelation"}
+        ];
+        
+        async function loadBible() {
+            try {
+                const filename = currentLanguage === 'english' ? 'esv-bible-2001.json' : 'hgb-utf8.json';
+                const response = await fetch(filename);
+                bibleData = await response.json();
+                buildSearchIndex();
+                populateBooks();
+                loadFirstBook();
+            } catch (error) {
+                const loadingText = currentLanguage === 'english' ? 'Failed to load. Please check the JSON file.' : '加载失败，请检查 JSON 文件';
+                document.getElementById('content').innerHTML = `<div class="loading">${loadingText}</div>`;
+            }
+        }
+        
+        function populateBooks() {
+            const bookSelect = document.getElementById('bookSelect');
+            bookSelect.innerHTML = `<option value="">${currentLanguage === 'english' ? 'Select Book' : '选择书卷'}</option>`;
+            bookList.forEach((bookInfo, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = currentLanguage === 'english' ? bookInfo.english : bookInfo.book;
+                bookSelect.appendChild(option);
+            });
+        }
+        
+        function loadFirstBook() {
+            if (bookList.length > 0) {
+                document.getElementById('bookSelect').value = 0;
+                displayBook(0);
+            }
+        }
+        
+        let bookCodeMap = {
+            "Genesis": "Gen",
+            "Exodus": "Exo",
+            "Leviticus": "Lev",
+            "Numbers": "Num",
+            "Deuteronomy": "Deu",
+            "Joshua": "Jos",
+            "Judges": "Jug",
+            "Ruth": "Rut",
+            "1 Samuel": "1Sa",
+            "2 Samuel": "2Sa",
+            "1 Kings": "1Ki",
+            "2 Kings": "2Ki",
+            "1 Chronicles": "1Ch",
+            "2 Chronicles": "2Ch",
+            "Ezra": "Ezr",
+            "Nehemiah": "Neh",
+            "Esther": "Est",
+            "Job": "Job",
+            "Psalms": "Psm",
+            "Proverbs": "Pro",
+            "Ecclesiastes": "Ecc",
+            "Song of Songs": "Son",
+            "Isaiah": "Isa",
+            "Jeremiah": "Jer",
+            "Lamentations": "Lam",
+            "Ezekiel": "Eze",
+            "Daniel": "Dan",
+            "Hosea": "Hos",
+            "Joel": "Joe",
+            "Amos": "Amo",
+            "Obadiah": "Oba",
+            "Jonah": "Jon",
+            "Micah": "Mic",
+            "Nahum": "Nah",
+            "Habakkuk": "Hab",
+            "Zephaniah": "Zep",
+            "Haggai": "Hag",
+            "Zechariah": "Zec",
+            "Malachi": "Mal",
+            "Matthew": "Mat",
+            "Mark": "Mak",
+            "Luke": "Luk",
+            "John": "Jhn",
+            "Acts": "Act",
+            "Romans": "Rom",
+            "1 Corinthians": "1Co",
+            "2 Corinthians": "2Co",
+            "Galatians": "Gal",
+            "Ephesians": "Eph",
+            "Philippians": "Phl",
+            "Colossians": "Col",
+            "1 Thessalonians": "1Ts",
+            "2 Thessalonians": "2Ts",
+            "1 Timothy": "1Ti",
+            "2 Timothy": "2Ti",
+            "Titus": "Tit",
+            "Philemon": "Phm",
+            "Hebrews": "Heb",
+            "James": "Jas",
+            "1 Peter": "1Pe",
+            "2 Peter": "2Pe",
+            "1 John": "1Jn",
+            "2 John": "2Jn",
+            "3 John": "3Jn",
+            "Jude": "Jud",
+            "Revelation": "Rev"
+        };
+        
+        function displayBook(bookIndex) {
+            const bookInfo = bookList[bookIndex];
+            const bookCode = bookCodeMap[bookInfo.english];
+            const bookVerses = bibleData.filter(verse => verse.book === bookCode);
+            const content = document.getElementById('content');
+            
+            const bookTitle = currentLanguage === 'english' ? bookInfo.english : bookInfo.book;
+            let html = `<div class="book-content">
+                <div class="book-title">${bookTitle}</div>`;
+            
+            bookVerses.forEach(verse => {
+                html += `<div class="verse">
+                    <span class="verse-number">${verse.verse}</span>
+                    ${verse.text}
+                </div>`;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+        
+        function buildSearchIndex() {
+            searchIndex = lunr(function () {
+                this.ref('id');
+                this.field('book');
+                this.field('chapter');
+                this.field('verse');
+                this.field('text');
+                
+                bibleData.forEach((verse, index) => {
+                    const bookName = getBookName(verse.book);
+                    this.add({
+                        id: index,
+                        book: bookName,
+                        chapter: verse.chapter,
+                        verse: verse.verse,
+                        text: verse.text
+                    });
+                });
+            });
+        }
+        
+        function getBookName(bookCode) {
+            const bookInfo = bookList.find(b => bookCodeMap[b.english] === bookCode);
+            return bookInfo ? (currentLanguage === 'english' ? bookInfo.english : bookInfo.book) : bookCode;
+        }
+        
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return showNormalView();
+            
+            const searchEntire = document.getElementById('searchEntireBible').checked;
+            localStorage.setItem('searchEntireBible', searchEntire);
+            
+            // Check if it's a reference search
+            console.log('Query:', query);
+            
+            // Check for "Book Chapter:Verse" or "Book Chapter:Verse-Verse" format
+            const verseRefMatch = query.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+            // Check for "Book Chapter" format
+            const chapterRefMatch = query.match(/^(.+?)\s+(\d+)$/);
+            
+            console.log('Verse regex match:', verseRefMatch);
+            console.log('Chapter regex match:', chapterRefMatch);
+            
+            if (verseRefMatch) {
+                console.log('Using verse reference search');
+                searchByReference(verseRefMatch, searchEntire);
+            } else if (chapterRefMatch) {
+                console.log('Using chapter reference search');
+                searchByChapter(chapterRefMatch, searchEntire);
+            } else {
+                console.log('Using text search');
+                searchByText(query, searchEntire);
+            }
+        }
+        
+        function searchByReference(refMatch, searchEntire) {
+            const [, bookName, chapter, startVerse, endVerse] = refMatch;
+            console.log('Searching for:', bookName, chapter, startVerse, endVerse);
+            
+            const bookInfo = bookList.find(b => 
+                b.english.toLowerCase() === bookName.toLowerCase() || 
+                b.book.toLowerCase() === bookName.toLowerCase()
+            );
+            
+            if (!bookInfo) {
+                console.log('Book not found:', bookName);
+                showSearchResults([], `Book "${bookName}" not found`);
+                return;
+            }
+            
+            const bookCode = bookCodeMap[bookInfo.english];
+            console.log('Book code:', bookCode);
+            
+            const chapterNum = parseInt(chapter);
+            const startVerseNum = parseInt(startVerse);
+            const endVerseNum = endVerse ? parseInt(endVerse) : startVerseNum;
+            
+            // Debug: show sample verses from this book
+            const bookVerses = bibleData.filter(v => v.book === bookCode);
+            console.log('Sample verses from book:', bookVerses.slice(0, 3));
+            
+            const results = bibleData.filter(verse => {
+                if (verse.book !== bookCode) return false;
+                
+                // Parse chapter and verse from "chapter:verse" format
+                const verseMatch = verse.verse.match(/^(\d+):(\d+)$/);
+                if (!verseMatch) return false;
+                
+                const verseChapter = parseInt(verseMatch[1]);
+                const verseNum = parseInt(verseMatch[2]);
+                
+                return verseChapter === chapterNum && verseNum >= startVerseNum && verseNum <= endVerseNum;
+            });
+            
+            console.log('Found results:', results.length);
+            showSearchResults(results, `Reference: ${bookName} ${chapter}:${startVerse}${endVerse ? '-' + endVerse : ''}`);
+        }
+        
+        function searchByChapter(chapterMatch, searchEntire) {
+            const [, bookName, chapter] = chapterMatch;
+            console.log('Searching for chapter:', bookName, chapter);
+            
+            const bookInfo = bookList.find(b => 
+                b.english.toLowerCase() === bookName.toLowerCase() || 
+                b.book.toLowerCase() === bookName.toLowerCase()
+            );
+            
+            if (!bookInfo) {
+                console.log('Book not found:', bookName);
+                showSearchResults([], `Book "${bookName}" not found`);
+                return;
+            }
+            
+            const bookCode = bookCodeMap[bookInfo.english];
+            const chapterNum = parseInt(chapter);
+            
+            const results = bibleData.filter(verse => {
+                if (verse.book !== bookCode) return false;
+                
+                // Parse chapter from "chapter:verse" format
+                const verseMatch = verse.verse.match(/^(\d+):(\d+)$/);
+                if (!verseMatch) return false;
+                
+                const verseChapter = parseInt(verseMatch[1]);
+                return verseChapter === chapterNum;
+            });
+            
+            // Sort by verse number within the chapter
+            results.sort((a, b) => {
+                const aVerse = parseInt(a.verse.match(/:(\d+)$/)[1]);
+                const bVerse = parseInt(b.verse.match(/:(\d+)$/)[1]);
+                return aVerse - bVerse;
+            });
+            
+            console.log('Found chapter results:', results.length);
+            showSearchResults(results, `Chapter: ${bookName} ${chapter}`);
+        }
+        
+        function searchByText(query, searchEntire) {
+            const currentBook = document.getElementById('bookSelect').value;
+            let results = searchIndex.search(query).map(result => bibleData[result.ref]);
+            
+            // Fallback for Chinese/non-English text if Lunr.js returns no results
+            if (results.length === 0) {
+                results = bibleData.filter(verse => verse.text.includes(query));
+            }
+            
+            if (!searchEntire && currentBook !== '') {
+                const bookCode = bookCodeMap[bookList[currentBook].english];
+                results = results.filter(verse => verse.book === bookCode);
+            }
+            
+            // Sort by Bible order
+            results.sort((a, b) => {
+                const aBookIndex = bookList.findIndex(book => bookCodeMap[book.english] === a.book);
+                const bBookIndex = bookList.findIndex(book => bookCodeMap[book.english] === b.book);
+                if (aBookIndex !== bBookIndex) return aBookIndex - bBookIndex;
+                
+                // Parse chapter and verse from "chapter:verse" format
+                const aMatch = a.verse.match(/^(\d+):(\d+)$/);
+                const bMatch = b.verse.match(/^(\d+):(\d+)$/);
+                
+                if (aMatch && bMatch) {
+                    const aChapter = parseInt(aMatch[1]);
+                    const bChapter = parseInt(bMatch[1]);
+                    if (aChapter !== bChapter) return aChapter - bChapter;
+                    
+                    const aVerse = parseInt(aMatch[2]);
+                    const bVerse = parseInt(bMatch[2]);
+                    return aVerse - bVerse;
+                }
+                
+                return 0;
+            });
+            
+            showSearchResults(results, `Text search: "${query}"`);
+        }
+        
+        function parseVerseNumber(verseStr) {
+            const match = verseStr.match(/:(\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+        }
+        
+        function showSearchResults(results, searchTerm) {
+            isShowingResults = true;
+            const content = document.getElementById('content');
+            const count = results.length;
+            const countText = currentLanguage === 'english' ? 
+                `${count} verse${count !== 1 ? 's' : ''} found` : 
+                `找到 ${count} 节经文`;
+            
+            // Push search state to history
+            history.pushState({
+                type: 'search',
+                results: results,
+                searchTerm: searchTerm,
+                query: document.getElementById('searchInput').value
+            }, '', '');
+            
+            let html = `<div class="search-results">
+                <div class="result-header">
+                    <h2>${searchTerm}</h2>
+                    <div>
+                        <span>${countText}</span>
+                        <button onclick="showNormalView()" style="margin-left: 15px; padding: 5px 10px; border: 1px solid #667eea; background: white; border-radius: 4px; cursor: pointer;">Back to Book</button>
+                    </div>
+                </div>`;
+            
+            const query = document.getElementById('searchInput').value.trim();
+            const isTextSearch = !query.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/i);
+            
+            results.forEach(verse => {
+                const bookName = getBookName(verse.book);
+                let verseText = verse.text;
+                
+                // Highlight search terms for text searches
+                if (isTextSearch && query) {
+                    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    verseText = verseText.replace(regex, '<mark style="background: #ffeb3b; padding: 2px;">$1</mark>');
+                }
+                
+                html += `<div class="result-verse">
+                    <div class="result-ref" onclick="goToVerse('${verse.book}', '${verse.verse}')" style="cursor: pointer; text-decoration: underline;">${bookName} ${verse.verse}</div>
+                    <div>${verseText}</div>
+                </div>`;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+        
+        function goToVerse(bookCode, verseRef) {
+            const bookIndex = bookList.findIndex(book => bookCodeMap[book.english] === bookCode);
+            if (bookIndex !== -1) {
+                // Push book view state to history
+                history.pushState({
+                    type: 'book',
+                    bookIndex: bookIndex,
+                    verseRef: verseRef
+                }, '', '');
+                
+                document.getElementById('bookSelect').value = bookIndex;
+                displayBook(bookIndex);
+                setTimeout(() => {
+                    const verseElements = document.querySelectorAll('.verse-number');
+                    for (let elem of verseElements) {
+                        if (elem.textContent === verseRef) {
+                            elem.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            elem.parentElement.style.backgroundColor = '#fff3cd';
+                            setTimeout(() => elem.parentElement.style.backgroundColor = '', 2000);
+                            break;
+                        }
+                    }
+                }, 100);
+            }
+        }
+        
+        function showNormalView() {
+            isShowingResults = false;
+            const selectedIndex = parseInt(document.getElementById('bookSelect').value);
+            if (!isNaN(selectedIndex)) {
+                displayBook(selectedIndex);
+            }
+        }
+        
+        document.getElementById('languageSelect').addEventListener('change', function() {
+            currentLanguage = this.value;
+            localStorage.setItem('language', currentLanguage);
+            document.getElementById('pageTitle').textContent = currentLanguage === 'english' ? 'Bible' : '中文圣经';
+            document.getElementById('content').innerHTML = `<div class="loading">${currentLanguage === 'english' ? 'Loading Bible...' : '正在加载圣经...'}</div>`;
+            loadBible();
+        });
+        
+        document.getElementById('bookSelect').addEventListener('change', function() {
+            const selectedIndex = parseInt(this.value);
+            if (!isNaN(selectedIndex)) {
+                displayBook(selectedIndex);
+            }
+        });
+        
+        // Search functionality with debouncing
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 300);
+            
+            // Show/hide clear button
+            const clearBtn = document.getElementById('searchClear');
+            clearBtn.style.display = this.value ? 'block' : 'none';
+        });
+        
+        // Clear search
+        document.getElementById('searchClear').addEventListener('click', function() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = '';
+            this.style.display = 'none';
+            showNormalView();
+            searchInput.focus();
+        });
+        document.getElementById('searchEntireBible').addEventListener('change', function() {
+            if (document.getElementById('searchInput').value.trim()) {
+                performSearch();
+            }
+        });
+        
+        // Load search preference
+        const savedPreference = localStorage.getItem('searchEntireBible');
+        if (savedPreference === 'true') {
+            document.getElementById('searchEntireBible').checked = true;
+        }
+        
+        // Load language preference
+        const savedLanguage = localStorage.getItem('language');
+        if (savedLanguage) {
+            currentLanguage = savedLanguage;
+            document.getElementById('languageSelect').value = savedLanguage;
+            document.getElementById('pageTitle').textContent = currentLanguage === 'english' ? 'Bible' : '中文圣经';
+        }
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state) {
+                if (event.state.type === 'search') {
+                    // Restore search results
+                    document.getElementById('searchInput').value = event.state.query;
+                    showSearchResults(event.state.results, event.state.searchTerm);
+                } else if (event.state.type === 'book') {
+                    // Go to book view
+                    document.getElementById('bookSelect').value = event.state.bookIndex;
+                    displayBook(event.state.bookIndex);
+                    if (event.state.verseRef) {
+                        setTimeout(() => {
+                            const verseElements = document.querySelectorAll('.verse-number');
+                            for (let elem of verseElements) {
+                                if (elem.textContent === event.state.verseRef) {
+                                    elem.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    break;
+                                }
+                            }
+                        }, 100);
+                    }
+                }
+            }
+        });
+        
+        loadBible();
+    </script>
+</body>
+</html>
