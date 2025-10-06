@@ -636,13 +636,13 @@
                     const verseElements = document.querySelectorAll('.verse-number');
                     for (let elem of verseElements) {
                         if (elem.textContent === verseRef) {
-                            elem.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            elem.parentElement.scrollIntoView({ block: 'center' });
                             elem.parentElement.style.backgroundColor = '#fff3cd';
                             setTimeout(() => elem.parentElement.style.backgroundColor = '', 2000);
                             break;
                         }
                     }
-                }, 100);
+                }, 50);
             }
         }
         
