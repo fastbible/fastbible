@@ -66,11 +66,12 @@
             display: inline-block;
         }
         .search-input {
-            padding: 10px 35px 10px 15px;
+            padding: 10px 35px 10px 40px;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
             font-size: 16px;
-            min-width: 400px;
+            min-width: 300px;
+            max-width: 90vw;
             transition: all 0.3s ease;
         }
         .search-input:focus { border-color: #667eea; outline: none; }
@@ -90,6 +91,15 @@
             display: none;
         }
         .search-clear:hover { background: #c82333; }
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 16px;
+            pointer-events: none;
+        }
         .search-checkbox { margin-left: 10px; }
         .search-results {
             background: white;
@@ -168,7 +178,8 @@
         
         <div class="search-container">
             <div class="search-input-wrapper">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search text or reference (e.g., Romans 8:1-5)">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="text or verse (Romans 8:1-5)">
                 <button id="searchClear" class="search-clear">×</button>
             </div>
             <label class="search-checkbox">
