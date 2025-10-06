@@ -724,11 +724,11 @@
                             const verseElements = document.querySelectorAll('.verse-number');
                             for (let elem of verseElements) {
                                 if (elem.textContent === event.state.verseRef) {
-                                    elem.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    elem.parentElement.scrollIntoView({ block: 'center' });
                                     break;
                                 }
                             }
-                        }, 100);
+                        }, 50);
                     }
                 }
             }
