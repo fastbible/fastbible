@@ -416,6 +416,14 @@
             return bookInfo ? (currentLanguage === 'english' ? bookInfo.english : bookInfo.book) : bookCode;
         }
         
+        function findBookByNameOrCode(searchName) {
+            return bookList.find(b => 
+                b.english.toLowerCase() === searchName.toLowerCase() || 
+                b.book.toLowerCase() === searchName.toLowerCase() ||
+                bookCodeMap[b.english].toLowerCase() === searchName.toLowerCase()
+            );
+        }
+        
         function performSearch() {
             const query = document.getElementById('searchInput').value.trim();
             if (!query) return showNormalView();
@@ -450,10 +458,7 @@
             const [, bookName, chapter, startVerse, endVerse] = refMatch;
             console.log('Searching for:', bookName, chapter, startVerse, endVerse);
             
-            const bookInfo = bookList.find(b => 
-                b.english.toLowerCase() === bookName.toLowerCase() || 
-                b.book.toLowerCase() === bookName.toLowerCase()
-            );
+            const bookInfo = findBookByNameOrCode(bookName);
             
             if (!bookInfo) {
                 console.log('Book not found:', bookName);
@@ -493,10 +498,7 @@
             const [, bookName, chapter] = chapterMatch;
             console.log('Searching for chapter:', bookName, chapter);
             
-            const bookInfo = bookList.find(b => 
-                b.english.toLowerCase() === bookName.toLowerCase() || 
-                b.book.toLowerCase() === bookName.toLowerCase()
-            );
+            const bookInfo = findBookByNameOrCode(bookName);
             
             if (!bookInfo) {
                 console.log('Book not found:', bookName);
