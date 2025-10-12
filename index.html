@@ -572,7 +572,7 @@
             return match ? parseInt(match[1]) : 0;
         }
         
-        function showSearchResults(results, searchTerm) {
+        function showSearchResults(results, searchTerm, restoreScroll = 0) {
             isShowingResults = true;
             const content = document.getElementById('content');
             const count = results.length;
@@ -581,12 +581,14 @@
                 `找到 ${count} 节经文`;
             
             // Push search state to history
-            history.pushState({
-                type: 'search',
-                results: results,
-                searchTerm: searchTerm,
-                query: document.getElementById('searchInput').value
-            }, '', '');
+            if (restoreScroll === 0) {
+                history.pushState({
+                    type: 'search',
+                    results: results,
+                    searchTerm: searchTerm,
+                    query: document.getElementById('searchInput').value
+                }, '', '');
+            }
             
             let html = `<div class="search-results">
                 <div class="result-header">
@@ -618,11 +620,27 @@
             
             html += '</div>';
             content.innerHTML = html;
+            
+            // Restore scroll position if navigating back
+            if (restoreScroll > 0) {
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, restoreScroll);
+                });
+            }
         }
         
         function goToVerse(bookCode, verseRef) {
             const bookIndex = bookList.findIndex(book => bookCodeMap[book.english] === bookCode);
             if (bookIndex !== -1) {
+                // Save current scroll position in current history state
+                const scrollPos = window.pageYOffset || document.documentElement.scrollTop;
+                if (history.state) {
+                    history.replaceState({
+                        ...history.state,
+                        scrollPos: scrollPos
+                    }, '');
+                }
+                
                 // Push book view state to history
                 history.pushState({
                     type: 'book',
@@ -714,7 +732,8 @@
                 if (event.state.type === 'search') {
                     // Restore search results
                     document.getElementById('searchInput').value = event.state.query;
-                    showSearchResults(event.state.results, event.state.searchTerm);
+                    const scrollPos = event.state.scrollPos || 0;
+                    showSearchResults(event.state.results, event.state.searchTerm, scrollPos);
                 } else if (event.state.type === 'book') {
                     // Go to book view
                     document.getElementById('bookSelect').value = event.state.bookIndex;
