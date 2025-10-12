@@ -100,6 +100,40 @@
             font-size: 16px;
             pointer-events: none;
         }
+        .search-help {
+            margin-left: 10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: help;
+            position: relative;
+        }
+        .search-help:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            transition: opacity 0.3s;
+        }
         .search-checkbox { margin-left: 10px; }
         .search-results {
             background: white;
@@ -183,6 +217,10 @@
                 <span class="search-icon">🔍</span>
                 <input type="text" id="searchInput" class="search-input" placeholder="text or verse (Romans 8:1-5)">
                 <button id="searchClear" class="search-clear">×</button>
+            </div>
+            <div class="search-help">
+                ?
+                <div class="tooltip">Text: "love" | Verse: "Romans 8:1" | Chapter: "Genesis 1" | Short: "Rom 8:1"</div>
             </div>
             <label class="search-checkbox">
                 <input type="checkbox" id="searchEntireBible"> Search entire Bible
