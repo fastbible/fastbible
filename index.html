@@ -89,6 +89,7 @@
             font-size: 12px;
             color: white;
             display: none;
+            z-index: 10;
         }
         .search-clear:hover { background: #c82333; }
         .search-icon {
@@ -220,7 +221,7 @@
             </div>
             <div class="search-help">
                 ?
-                <div class="tooltip">Text: "love" | Verse: "Romans 8:1" | Chapter: "Genesis 1" | Short: "Rom 8:1"</div>
+                <div class="tooltip">Text: "love" | Verse: "Romans 8:1-5" | Chapter: "Genesis 1" | Short: "Rom 8:1-5"</div>
             </div>
             <label class="search-checkbox">
                 <input type="checkbox" id="searchEntireBible"> Search entire Bible
@@ -737,7 +738,7 @@
             
             // Show/hide clear button
             const clearBtn = document.getElementById('searchClear');
-            clearBtn.style.display = this.value ? 'block' : 'none';
+            clearBtn.style.display = this.value ? 'inline-block' : 'none';
         });
         
         // Clear search
