@@ -153,6 +153,8 @@
             margin-right: 8px;
             font-size: 14px;
             vertical-align: super;
+            speak: never;
+            -webkit-speak: none;
         }
         .loading {
             text-align: center;
@@ -379,7 +381,7 @@
             
             bookVerses.forEach(verse => {
                 html += `<div class="verse">
-                    <span class="verse-number">${verse.verse}</span>
+                    <span class="verse-number" aria-hidden="true">${verse.verse}</span>
                     ${verse.text}
                 </div>`;
             });
