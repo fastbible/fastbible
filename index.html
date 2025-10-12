@@ -17,7 +17,7 @@
             max-width: 95vw;
             width: 100%;
             margin: 0 auto;
-            padding: 20px;
+            padding: 10px;
             background: rgba(255,255,255,0.95);
             min-height: 100vh;
             box-shadow: 0 0 50px rgba(0,0,0,0.1);
@@ -115,7 +115,8 @@
             cursor: help;
             position: relative;
         }
-        .search-help:hover .tooltip {
+        .search-help:hover .tooltip,
+        .search-help.active .tooltip {
             visibility: visible;
             opacity: 1;
         }
@@ -134,6 +135,13 @@
             white-space: nowrap;
             z-index: 1000;
             transition: opacity 0.3s;
+        }
+        @media (max-width: 480px) {
+            .tooltip {
+                white-space: normal;
+                width: 200px;
+                text-align: center;
+            }
         }
         .search-checkbox { margin-left: 10px; }
         .search-results {
@@ -164,7 +172,7 @@
         }
         .book-content {
             background: white;
-            padding: 30px;
+            padding: 15px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -793,6 +801,19 @@
                         }, 50);
                     }
                 }
+            }
+        });
+        
+        // Help tooltip for mobile
+        document.querySelector('.search-help').addEventListener('click', function(e) {
+            e.preventDefault();
+            this.classList.toggle('active');
+        });
+        
+        // Hide tooltip when clicking elsewhere
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-help')) {
+                document.querySelector('.search-help').classList.remove('active');
             }
         });
         
