@@ -472,7 +472,7 @@
         
         function performSearch() {
             const query = document.getElementById('searchInput').value.trim();
-            if (!query) return showNormalView();
+            if (!query || query.length < 3) return showNormalView();
             
             const searchEntire = document.getElementById('searchEntireBible').checked;
             localStorage.setItem('searchEntireBible', searchEntire);
@@ -583,7 +583,7 @@
             
             // Fallback for Chinese/non-English text if Lunr.js returns no results
             if (results.length === 0) {
-                results = bibleData.filter(verse => verse.text.includes(query));
+                results = bibleData.filter(verse => verse.text.toLowerCase().includes(query.toLowerCase()));
             }
             
             if (!searchEntire && currentBook !== '') {
