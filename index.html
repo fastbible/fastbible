@@ -340,9 +340,46 @@
         }
         
         function loadFirstBook() {
+            // Check URL parameters first
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookParam = urlParams.get('book');
+            const verseParam = urlParams.get('verse');
+            const searchParam = urlParams.get('search');
+            
+            if (searchParam) {
+                document.getElementById('searchInput').value = searchParam;
+                performSearch();
+                return;
+            }
+            
+            if (bookParam) {
+                const bookIndex = bookList.findIndex(book => 
+                    book.english.toLowerCase().replace(/\s+/g, '-') === bookParam
+                );
+                if (bookIndex !== -1) {
+                    document.getElementById('bookSelect').value = bookIndex;
+                    displayBook(bookIndex, false);
+                    if (verseParam) {
+                        setTimeout(() => {
+                            const verseElements = document.querySelectorAll('.verse-number');
+                            for (let elem of verseElements) {
+                                if (elem.textContent === verseParam) {
+                                    elem.parentElement.scrollIntoView({ block: 'center' });
+                                    elem.parentElement.style.backgroundColor = '#fff3cd';
+                                    setTimeout(() => elem.parentElement.style.backgroundColor = '', 2000);
+                                    break;
+                                }
+                            }
+                        }, 100);
+                    }
+                    return;
+                }
+            }
+            
+            // Default behavior
             if (bookList.length > 0) {
                 document.getElementById('bookSelect').value = 0;
-                displayBook(0);
+                displayBook(0, false);
             }
         }
         
@@ -415,11 +452,19 @@
             "Revelation": "Rev"
         };
         
-        function displayBook(bookIndex) {
+        function displayBook(bookIndex, updateUrl = true) {
             const bookInfo = bookList[bookIndex];
             const bookCode = bookCodeMap[bookInfo.english];
             const bookVerses = bibleData.filter(verse => verse.book === bookCode);
             const content = document.getElementById('content');
+            
+            if (updateUrl) {
+                const url = new URL(window.location);
+                url.searchParams.set('book', bookInfo.english.toLowerCase().replace(/\s+/g, '-'));
+                url.searchParams.delete('search');
+                url.searchParams.delete('verse');
+                history.pushState(null, '', url);
+            }
             
             const bookTitle = currentLanguage === 'english' ? bookInfo.english : bookInfo.book;
             let html = `<div class="book-content">
@@ -427,7 +472,7 @@
             
             bookVerses.forEach(verse => {
                 html += `<div class="verse">
-                    <span class="verse-number" aria-hidden="true">${verse.verse}</span>
+                    <span class="verse-number" aria-hidden="true" onclick="updateVerseUrl('${verse.book}', '${verse.verse}')" style="cursor: pointer;">${verse.verse}</span>
                     ${verse.text}
                 </div>`;
             });
@@ -630,14 +675,18 @@
                 `${count} verse${count !== 1 ? 's' : ''} found` : 
                 `找到 ${count} 节经文`;
             
-            // Push search state to history
+            // Update URL for search
             if (restoreScroll === 0) {
+                const url = new URL(window.location);
+                url.searchParams.set('search', document.getElementById('searchInput').value);
+                url.searchParams.delete('book');
+                url.searchParams.delete('verse');
                 history.pushState({
                     type: 'search',
                     results: results,
                     searchTerm: searchTerm,
                     query: document.getElementById('searchInput').value
-                }, '', '');
+                }, '', url);
             }
             
             let html = `<div class="search-results">
@@ -679,6 +728,18 @@
             }
         }
         
+        function updateVerseUrl(bookCode, verseRef) {
+            const bookIndex = bookList.findIndex(book => bookCodeMap[book.english] === bookCode);
+            if (bookIndex !== -1) {
+                const bookInfo = bookList[bookIndex];
+                const url = new URL(window.location);
+                url.searchParams.set('book', bookInfo.english.toLowerCase().replace(/\s+/g, '-'));
+                url.searchParams.set('verse', verseRef);
+                url.searchParams.delete('search');
+                history.replaceState(null, '', url);
+            }
+        }
+        
         function goToVerse(bookCode, verseRef) {
             const bookIndex = bookList.findIndex(book => bookCodeMap[book.english] === bookCode);
             if (bookIndex !== -1) {
@@ -691,15 +752,22 @@
                     }, '');
                 }
                 
+                // Update URL for verse
+                const bookInfo = bookList[bookIndex];
+                const url = new URL(window.location);
+                url.searchParams.set('book', bookInfo.english.toLowerCase().replace(/\s+/g, '-'));
+                url.searchParams.set('verse', verseRef);
+                url.searchParams.delete('search');
+                
                 // Push book view state to history
                 history.pushState({
                     type: 'book',
                     bookIndex: bookIndex,
                     verseRef: verseRef
-                }, '', '');
+                }, '', url);
                 
                 document.getElementById('bookSelect').value = bookIndex;
-                displayBook(bookIndex);
+                displayBook(bookIndex, false);
                 setTimeout(() => {
                     const verseElements = document.querySelectorAll('.verse-number');
                     for (let elem of verseElements) {
@@ -778,7 +846,36 @@
         
         // Handle browser back/forward buttons
         window.addEventListener('popstate', function(event) {
-            if (event.state) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookParam = urlParams.get('book');
+            const verseParam = urlParams.get('verse');
+            const searchParam = urlParams.get('search');
+            
+            if (searchParam) {
+                document.getElementById('searchInput').value = searchParam;
+                performSearch();
+            } else if (bookParam) {
+                const bookIndex = bookList.findIndex(book => 
+                    book.english.toLowerCase().replace(/\s+/g, '-') === bookParam
+                );
+                if (bookIndex !== -1) {
+                    document.getElementById('bookSelect').value = bookIndex;
+                    displayBook(bookIndex, false);
+                    if (verseParam) {
+                        setTimeout(() => {
+                            const verseElements = document.querySelectorAll('.verse-number');
+                            for (let elem of verseElements) {
+                                if (elem.textContent === verseParam) {
+                                    elem.parentElement.scrollIntoView({ block: 'center' });
+                                    elem.parentElement.style.backgroundColor = '#fff3cd';
+                                    setTimeout(() => elem.parentElement.style.backgroundColor = '', 2000);
+                                    break;
+                                }
+                            }
+                        }, 50);
+                    }
+                }
+            } else if (event.state) {
                 if (event.state.type === 'search') {
                     // Restore search results
                     document.getElementById('searchInput').value = event.state.query;
@@ -787,7 +884,7 @@
                 } else if (event.state.type === 'book') {
                     // Go to book view
                     document.getElementById('bookSelect').value = event.state.bookIndex;
-                    displayBook(event.state.bookIndex);
+                    displayBook(event.state.bookIndex, false);
                     if (event.state.verseRef) {
                         setTimeout(() => {
                             const verseElements = document.querySelectorAll('.verse-number');
