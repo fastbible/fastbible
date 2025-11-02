@@ -29,30 +29,49 @@
             }
         }
         .header-section {
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+            margin-bottom: 20px;
+        }
+        .mini-toolbar {
             position: sticky;
             top: 0;
             background: rgba(255,255,255,0.98);
             backdrop-filter: blur(10px);
             z-index: 100;
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
         }
-        .header-section.collapsed {
-            padding: 8px 0;
+        .current-book {
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 1.1em;
+        }
+        .expand-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
             cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
-        .header-section.collapsed .title-controls {
-            justify-content: center;
+        .expand-btn:hover {
+            background: #5a67d8;
         }
-        .header-section.collapsed .controls,
-        .header-section.collapsed .search-container {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            pointer-events: none;
+        .full-controls {
+            padding: 20px;
+            display: none;
+        }
+        .full-controls.expanded {
+            display: block;
         }
         .title-controls {
             display: flex;
@@ -66,13 +85,9 @@
             margin: 0;
             font-size: 2.2em;
         }
-        .header-section.collapsed .title-controls h1 {
-            font-size: 1.2em;
-        }
         h1 {
             color: #4a5568;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
         }
         .inline-controls {
             display: flex;
@@ -253,33 +268,42 @@
 </head>
 <body>
     <div class="container">
+        <div class="mini-toolbar">
+            <div class="current-book" id="currentBook">Bible</div>
+            <button class="expand-btn" onclick="toggleControls()">
+                🔍 Search
+            </button>
+        </div>
+        
         <div class="header-section">
-            <div class="title-controls">
-                <h1 id="pageTitle">Bible</h1>
-                <div class="inline-controls">
-                    <select id="languageSelect">
-                        <option value="english">English</option>
-                        <option value="chinese">中文</option>
-                    </select>
-                    <select id="bookSelect">
-                        <option value="">Select Book</option>
-                    </select>
+            <div class="full-controls expanded" id="fullControls">
+                <div class="title-controls">
+                    <h1 id="pageTitle">Bible</h1>
+                    <div class="inline-controls">
+                        <select id="languageSelect">
+                            <option value="english">English</option>
+                            <option value="chinese">中文</option>
+                        </select>
+                        <select id="bookSelect">
+                            <option value="">Select Book</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="search-container">
-                <div class="search-input-wrapper">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="searchInput" class="search-input" placeholder="text or verse (Romans 8:1-5)">
-                    <button id="searchClear" class="search-clear">×</button>
+                
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="text or verse (Romans 8:1-5)">
+                        <button id="searchClear" class="search-clear">×</button>
+                    </div>
+                    <div class="search-help">
+                        ?
+                        <div class="tooltip">Text: "love" | Verse: "Romans 8:1-5" | Chapter: "Genesis 1" | Short: "Rom 8:1-5"</div>
+                    </div>
+                    <label class="search-checkbox">
+                        <input type="checkbox" id="searchEntireBible"> Search entire Bible
+                    </label>
                 </div>
-                <div class="search-help">
-                    ?
-                    <div class="tooltip">Text: "love" | Verse: "Romans 8:1-5" | Chapter: "Genesis 1" | Short: "Rom 8:1-5"</div>
-                </div>
-                <label class="search-checkbox">
-                    <input type="checkbox" id="searchEntireBible"> Search entire Bible
-                </label>
             </div>
         </div>
         
@@ -500,6 +524,26 @@
             "Revelation": "Rev"
         };
         
+        function toggleControls() {
+            const fullControls = document.getElementById('fullControls');
+            
+            if (fullControls.classList.contains('expanded') && window.scrollY === 0) {
+                // Close panel (only if we're at top and can see it)
+                fullControls.classList.remove('expanded');
+            } else {
+                // Open panel and go to top
+                fullControls.classList.add('expanded');
+                window.scrollTo(0, 0);
+                setTimeout(() => {
+                    document.getElementById('searchInput').focus();
+                }, 100);
+            }
+        }
+        
+        function updateCurrentBook(bookTitle) {
+            document.getElementById('currentBook').textContent = bookTitle;
+        }
+        
         function displayBook(bookIndex, updateUrl = true) {
             const bookInfo = bookList[bookIndex];
             const bookCode = bookCodeMap[bookInfo.english];
@@ -510,6 +554,9 @@
             const title = document.getElementById('pageTitle');
             const bookTitle = currentLanguage === 'english' ? bookInfo.english : bookInfo.book;
             title.setAttribute('data-book', bookTitle);
+            
+            // Update mini toolbar book name
+            updateCurrentBook(bookTitle);
             
             if (updateUrl) {
                 const url = new URL(window.location);
@@ -975,35 +1022,6 @@
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.search-help')) {
                 document.querySelector('.search-help').classList.remove('active');
-            }
-        });
-        
-        // Collapsible header functionality
-        let lastScrollY = 0;
-        let headerCollapsed = false;
-        
-        window.addEventListener('scroll', () => {
-            const currentScrollY = window.scrollY;
-            const header = document.querySelector('.header-section');
-            
-            if (currentScrollY > lastScrollY && currentScrollY > 100 && !headerCollapsed) {
-                // Scrolling down - collapse header
-                header.classList.add('collapsed');
-                headerCollapsed = true;
-            } else if (currentScrollY < lastScrollY && headerCollapsed) {
-                // Scrolling up - expand header
-                header.classList.remove('collapsed');
-                headerCollapsed = false;
-            }
-            
-            lastScrollY = currentScrollY;
-        });
-        
-        // Click to expand collapsed header
-        document.querySelector('.header-section').addEventListener('click', function() {
-            if (this.classList.contains('collapsed')) {
-                this.classList.remove('collapsed');
-                headerCollapsed = false;
             }
         });
         
