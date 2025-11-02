@@ -584,7 +584,7 @@
             }
         }
         
-        function searchByReference(refMatch, searchEntire) {
+        function searchByReference(refMatch, searchEntire, skipHistory = false) {
             const [, bookName, chapter, startVerse, endVerse] = refMatch;
             console.log('Searching for:', bookName, chapter, startVerse, endVerse);
             
@@ -592,7 +592,7 @@
             
             if (!bookInfo) {
                 console.log('Book not found:', bookName);
-                showSearchResults([], `Book "${bookName}" not found`);
+                showSearchResults([], `Book "${bookName}" not found`, 0, skipHistory);
                 return;
             }
             
@@ -621,10 +621,10 @@
             });
             
             console.log('Found results:', results.length);
-            showSearchResults(results, `Reference: ${bookName} ${chapter}:${startVerse}${endVerse ? '-' + endVerse : ''}`);
+            showSearchResults(results, `Reference: ${bookName} ${chapter}:${startVerse}${endVerse ? '-' + endVerse : ''}`, 0, skipHistory);
         }
         
-        function searchByChapter(chapterMatch, searchEntire) {
+        function searchByChapter(chapterMatch, searchEntire, skipHistory = false) {
             const [, bookName, chapter] = chapterMatch;
             console.log('Searching for chapter:', bookName, chapter);
             
@@ -632,7 +632,7 @@
             
             if (!bookInfo) {
                 console.log('Book not found:', bookName);
-                showSearchResults([], `Book "${bookName}" not found`);
+                showSearchResults([], `Book "${bookName}" not found`, 0, skipHistory);
                 return;
             }
             
@@ -658,10 +658,10 @@
             });
             
             console.log('Found chapter results:', results.length);
-            showSearchResults(results, `Chapter: ${bookName} ${chapter}`);
+            showSearchResults(results, `Chapter: ${bookName} ${chapter}`, 0, skipHistory);
         }
         
-        function searchByText(query, searchEntire) {
+        function searchByText(query, searchEntire, skipHistory = false) {
             const currentBook = document.getElementById('bookSelect').value;
             let results = searchIndex.search(query).map(result => bibleData[result.ref]);
             
@@ -698,7 +698,7 @@
                 return 0;
             });
             
-            showSearchResults(results, `Text search: "${query}"`);
+            showSearchResults(results, `Text search: "${query}"`, 0, skipHistory);
         }
         
         function parseVerseNumber(verseStr) {
@@ -706,7 +706,7 @@
             return match ? parseInt(match[1]) : 0;
         }
         
-        function showSearchResults(results, searchTerm, restoreScroll = 0) {
+        function showSearchResults(results, searchTerm, restoreScroll = 0, skipHistory = false) {
             isShowingResults = true;
             const content = document.getElementById('content');
             const count = results.length;
@@ -715,7 +715,7 @@
                 `找到 ${count} 节经文`;
             
             // Update URL for search
-            if (restoreScroll === 0) {
+            if (restoreScroll === 0 && !skipHistory) {
                 const url = new URL(window.location);
                 url.searchParams.set('search', document.getElementById('searchInput').value);
                 url.searchParams.delete('book');
@@ -892,7 +892,20 @@
             
             if (searchParam) {
                 document.getElementById('searchInput').value = searchParam;
-                performSearch();
+                // Perform search without creating new history entry
+                const query = searchParam.trim();
+                const searchEntire = document.getElementById('searchEntireBible').checked;
+                
+                const verseRefMatch = query.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+                const chapterRefMatch = query.match(/^(.+?)\s+(\d+)$/);
+                
+                if (verseRefMatch) {
+                    searchByReference(verseRefMatch, searchEntire, true);
+                } else if (chapterRefMatch) {
+                    searchByChapter(chapterRefMatch, searchEntire, true);
+                } else {
+                    searchByText(query, searchEntire, true);
+                }
             } else if (bookParam) {
                 const bookIndex = bookList.findIndex(book => 
                     book.english.toLowerCase().replace(/\s+/g, '-') === bookParam
