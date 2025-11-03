@@ -886,6 +886,10 @@
             const selectedIndex = parseInt(document.getElementById('bookSelect').value);
             if (!isNaN(selectedIndex)) {
                 displayBook(selectedIndex);
+            } else {
+                // If no book is selected, default to first book
+                document.getElementById('bookSelect').value = 0;
+                displayBook(0);
             }
         }
         
